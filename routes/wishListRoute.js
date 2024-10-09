@@ -9,7 +9,7 @@ const router = express.Router();
 router.post("/wishlist", asyncHandler(wishlistController.addToWishlist));
 
 // Get all wishlist items for a customer
-router.get("/:customerId", asyncHandler(wishlistController.getWishlist));
+router.get("/:customer_id", asyncHandler(wishlistController.getWishlist));
 
 // Remove an item from the wishlist
 router.delete("/:wishlistId", asyncHandler(wishlistController.removeFromWishlist));
