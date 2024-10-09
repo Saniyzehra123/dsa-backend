@@ -49,24 +49,23 @@ exports.getAllProducts = async (req, res) => {
 
     try {
         let query = `
-              SELECT 
-                sa.saree_name, sa.saree_weight, sa.blouse_type_id, 
+           SELECT 
+                sa.id as sarees_id, sa.saree_name, sa.saree_weight, sa.blouse_type_id, 
                 c.color_name, ft.fabric_type_name, sa.weave_types, sl.saree_length, 
                 ot.occasion_name, co.country_of_origin, 
                 ic.components_description, 
                 i.price, 
                 img.main_image_url, img.image_url1, img.image_url2, img.image_url3, img.image_url4  
                 FROM items i
-                inner JOIN saree_attributes sa ON sa.id = i.sarees_id
-				inner JOIN colors c ON c.id = sa.color_id
+                left JOIN saree_attributes sa ON sa.id = i.sarees_id
+                inner JOIN colors c ON c.id = sa.color_id
                 inner JOIN fabric_types ft ON ft.id = sa.fabric_type_id
                 inner JOIN saree_lengths sl ON sl.id = sa.saree_length_id
                 inner JOIN occasion_types ot ON ot.id = sa.occasion_id
                 inner JOIN countries co ON co.id = sa.country_id
                 inner JOIN included_components ic ON ic.id = sa.included_components_id
-                inner JOIN image_sets img ON img.saree_id = sa.id
-                WHERE 1=1;
-`;
+                left JOIN image_sets img ON img.saree_id = sa.id
+                where 1=1`;
 
         let queryParams = [];
 
