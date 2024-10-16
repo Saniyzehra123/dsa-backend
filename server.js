@@ -11,8 +11,9 @@ const shippingRoutes =require('./routes/shippingRoute.js');
 const paymentRoutes = require('./routes/paymentRoutes');
 const cookieParser = require('cookie-parser');
 const ApiError = require('./utils/ApiError.js');
- 
+const cors = require('cors');
 const authRoutes = require('./routes/authRoutes');
+const addressRoutes = require('./routes/addressRoutes');
 
 require('dotenv').config();
 
@@ -20,6 +21,8 @@ require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+app.use(cors());
 
 app.use(bodyParser.json());  
 app.use(cookieParser());
@@ -33,7 +36,7 @@ app.use('/api/order',orderRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/shipping', shippingRoutes);
 app.use('/api/payment', paymentRoutes);
- 
+app.use('/api/address', addressRoutes);
 
 
 // Error handling middleware

@@ -21,7 +21,6 @@ exports.registerUser = async (req, res) => {
     try {
         // Hash the password before saving it
         const hashedPassword = await bcrypt.hash(password, saltRounds);
-
         // Insert the new user into the database
         const sql = 'INSERT INTO users (first_name, last_name, email, password) VALUES (?, ?, ?, ?)';
         db.query(sql, [first_name, last_name, email, hashedPassword], (err, result) => {

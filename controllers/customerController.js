@@ -20,14 +20,26 @@ exports.register = (req, res) => {
         return res.status(400).json({ message: 'Password must be at least 6 characters long' });
     }
 
-    // Hash password
-    bcrypt.hash(password, 10, (err, hashedPassword) => {
-        if (err) return res.status(500).json({ message: 'Error hashing password' });
+    // Check if email or phone already exists
+    const checkUserSql = 'SELECT * FROM customers WHERE email = ? OR phone = ?';
+    db.query(checkUserSql, [email, phone], (err, result) => {
+        if (err) {
+            return res.status(500).json({ message: 'Database error' });
+        }
+        
+        if (result.length > 0) {
+            return res.status(400).json({ message: 'User with this email or phone already exists' });
+        }
 
-        const sql = 'INSERT INTO customers (username, phone, email, password) VALUES (?, ?, ?, ?)';
-        db.query(sql, [username, phone, email, hashedPassword], (err, result) => {
-            if (err) return res.status(400).json({ message: 'Error registering customer' });
-            res.status(201).json({ message: 'Customer registered successfully' });
+        // Hash password and insert new user if no duplicate found
+        bcrypt.hash(password, 10, (err, hashedPassword) => {
+            if (err) return res.status(500).json({ message: 'Error hashing password' });
+
+            const insertUserSql = 'INSERT INTO customers (username, phone, email, password) VALUES (?, ?, ?, ?)';
+            db.query(insertUserSql, [username, phone, email, hashedPassword], (err, result) => {
+                if (err) return res.status(500).json({ message: 'Error registering customer' });
+                res.status(201).json({ message: 'Customer registered successfully' });
+            });
         });
     });
 };
@@ -53,10 +65,14 @@ exports.login = (req, res) => {
 
         const customer = result[0];
         bcrypt.compare(password, customer.password, (err, isMatch) => {
-            if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
+            console.log("custom",isMatch)
+
+            if (!isMatch){
+                return res.status(400).json({ message: 'Invalid credentials' });
+            }
 
             // Generate a JWT token
-            const token = jwt.sign({ id: customer.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+            const token = jwt.sign({ id: customer.id }, process.env.JWT_SECRET, { expiresIn: '24h' });
 
             // Update auth_token in the database
             const updateTokenSql = 'UPDATE customers SET auth_token = ? WHERE id = ?';
@@ -74,6 +90,32 @@ exports.login = (req, res) => {
 
 
 
+// Customer Logout
+exports.logout = (req, res) => {
+    const token = req.cookies.token;
+
+    if (!token) {
+        return res.status(400).json({ message: 'No user is logged in' });
+    }
+
+    // Verify and decode the token to get the user's ID
+    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+        if (err) {
+            return res.status(400).json({ message: 'Invalid token' });
+        }
+
+        // Clear the token from the database
+        const clearTokenSql = 'UPDATE customers SET auth_token = NULL WHERE id = ?';
+        db.query(clearTokenSql, [decoded.id], (err) => {
+            if (err) return res.status(500).json({ message: 'Error clearing token' });
+
+            // Clear the token from cookies
+            res.clearCookie('token').status(200).json({
+                message: 'Logged out successfully'
+            });
+        });
+    });
+};
 
 
 

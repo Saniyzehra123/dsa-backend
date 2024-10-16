@@ -25,28 +25,32 @@ exports.addItemToCart = async (req, res) => {
 exports.getCartByCustomerId = async (req, res) => {
     const customerId = req.params.customer_id;
     const query = `
-        SELECT c.id as cart_id,c.quantity, i.price, img.main_image_url 
+               SELECT 
+            c.id AS cart_id, c.quantity, 
+            i.id AS item_id, i.sarees_id, 
+            i.price, 
+            sa.main_image_url
         FROM cart c
         INNER JOIN items i ON c.item_id = i.id
-		LEFT JOIN image_sets img ON img.saree_id = i.sarees_id  -- Adjusted to join by sarees_id
-        WHERE c.customer_id = 1;`;
+        INNER JOIN saree_attributes sa ON i.sarees_id = sa.id
+        WHERE c.customer_id = ?;` // Use the customerId parameter here
 
     try {
         db.query(query, [customerId], (err, results) => {
             if (err) {
-                return (new ApiError(500, `Error fetching cart: ${err.message}`));
+                return res.status(500).json({ message: `Error fetching cart: ${err.message}` });
             }
             if (results.length === 0) {
-                return (new ApiError(404, 'Cart is empty for this customer'));
+                return res.status(404).json({ message: 'Cart is empty for this customer' });
             }
-            return res.status(200).json(
-                new ApiResponse(200, results, 'Cart retrieved successfully')
-            );
+            return res.status(200).json({ data: results, message: 'Cart retrieved successfully' });
         });
     } catch (error) {
-        return (new ApiError(500, `Internal server error: ${error.message}`));
+        return res.status(500).json({ message: `Internal server error: ${error.message}` });
     }
 };
+
+
 
 // Update the quantity of an item in the cart
 exports.updateCartItem = async (req, res, next) => {

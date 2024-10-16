@@ -7,25 +7,44 @@ exports.getProductById = async (req, res) => {
     const productId = req.params.id;
 
     try {
-        const query = `
-         SELECT 
-                sa.saree_name, sa.saree_weight, sa.blouse_type_id, 
-                c.color_name, ft.fabric_type_name, sa.weave_types, sl.saree_length, 
-                ot.occasion_name, co.country_of_origin, 
-                ic.components_description, 
-                i.price, 
-                img.main_image_url, img.image_url1, img.image_url2, img.image_url3, img.image_url4  
-                FROM items i
-                inner JOIN saree_attributes sa ON sa.id = i.sarees_id
-				inner JOIN colors c ON c.id = sa.color_id
-                inner JOIN fabric_types ft ON ft.id = sa.fabric_type_id
-                inner JOIN saree_lengths sl ON sl.id = sa.saree_length_id
-                inner JOIN occasion_types ot ON ot.id = sa.occasion_id
-                inner JOIN countries co ON co.id = sa.country_id
-                inner JOIN included_components ic ON ic.id = sa.included_components_id
-                inner JOIN image_sets img ON img.saree_id = sa.id
-                WHERE 1=1;
-;`
+        const query = `SELECT 
+                        i.id AS item_id, 
+                        i.sarees_id,
+                        sa.saree_name, 
+                        sa.saree_weight, 
+                        sa.blouse_type_id, 
+                        c.color_name, 
+                        ft.fabric_type_name, 
+                        sa.weave_types, 
+                        sl.saree_length, 
+                        ot.occasion_name, 
+                        co.country_of_origin, 
+                        ic.components_description, 
+                        i.price, 
+                        sa.main_image_url, 
+                        sa.image_url1, 
+                        sa.image_url2, 
+                        sa.image_url3, 
+                        sa.image_url4,
+                        CASE 
+                            WHEN sa.blouse_type_id IS NOT NULL THEN b.blouse_description
+                            ELSE null
+                        END AS blouse_name,
+                        CASE 
+                            WHEN sa.weave_types IS NOT NULL THEN w.weave_type_name
+                            ELSE null
+                        END AS weave_name
+                    FROM saree_attributes sa
+                    INNER JOIN items i ON i.sarees_id = sa.id
+                    INNER JOIN colors c ON c.id = sa.color_id
+                    INNER JOIN fabric_types ft ON ft.id = sa.fabric_type_id
+                    INNER JOIN saree_lengths sl ON sl.id = sa.saree_length_id
+                    INNER JOIN occasion_types ot ON ot.id = sa.occasion_id
+                    INNER JOIN countries co ON co.id = sa.country_id
+                    INNER JOIN included_components ic ON ic.id = sa.included_components_id
+                    LEFT JOIN  blouse_types b ON b.id = sa.blouse_type_id
+                    LEFT JOIN  weave_types w ON w.id = sa.weave_types 
+                    WHERE i.id = ?`;
 
         db.query(query, [productId], (err, results) => {
             if (err) {
@@ -50,22 +69,21 @@ exports.getAllProducts = async (req, res) => {
     try {
         let query = `
            SELECT 
-                sa.id as sarees_id, sa.saree_name, sa.saree_weight, sa.blouse_type_id, 
-                c.color_name, ft.fabric_type_name, sa.weave_types, sl.saree_length, 
-                ot.occasion_name, co.country_of_origin, 
-                ic.components_description, 
-                i.price, 
-                img.main_image_url, img.image_url1, img.image_url2, img.image_url3, img.image_url4  
-                FROM items i
-                left JOIN saree_attributes sa ON sa.id = i.sarees_id
-                inner JOIN colors c ON c.id = sa.color_id
-                inner JOIN fabric_types ft ON ft.id = sa.fabric_type_id
-                inner JOIN saree_lengths sl ON sl.id = sa.saree_length_id
-                inner JOIN occasion_types ot ON ot.id = sa.occasion_id
-                inner JOIN countries co ON co.id = sa.country_id
-                inner JOIN included_components ic ON ic.id = sa.included_components_id
-                left JOIN image_sets img ON img.saree_id = sa.id
-                where 1=1`;
+                i.id as item_id, i.sarees_id, sa.saree_name, sa.saree_weight, sa.blouse_type_id, 
+               c.color_name, ft.fabric_type_name, sa.weave_types, sl.saree_length, 
+               ot.occasion_name, co.country_of_origin, 
+               ic.components_description, 
+               i.price, 
+               sa.main_image_url, sa.image_url1, sa.image_url2, sa.image_url3, sa.image_url4  
+               FROM saree_attributes sa
+               INNER JOIN items i ON i.sarees_id = sa.id
+               INNER JOIN colors c ON c.id = sa.color_id
+               INNER JOIN fabric_types ft ON ft.id = sa.fabric_type_id
+               INNER JOIN saree_lengths sl ON sl.id = sa.saree_length_id
+               INNER JOIN occasion_types ot ON ot.id = sa.occasion_id
+               INNER JOIN countries co ON co.id = sa.country_id
+               INNER JOIN included_components ic ON ic.id = sa.included_components_id
+               WHERE 1=1`;  // Using 'WHERE 1=1' for easier addition of filters
 
         let queryParams = [];
 
@@ -91,7 +109,7 @@ exports.getAllProducts = async (req, res) => {
             queryParams.push(occasion);
         }
         if (weaveType) {
-            query += ` AND wt.weave_type_name = ?`;
+            query += ` AND sa.weave_types = ?`;
             queryParams.push(weaveType);
         }
 
@@ -102,23 +120,29 @@ exports.getAllProducts = async (req, res) => {
             query += ` ORDER BY i.price DESC`;
         }
 
-        // Pagination
-        const offset = (page - 1) * limit;
+        // Pagination (ensure limit and offset are integers)
+        const offset = (parseInt(page) - 1) * parseInt(limit);
         query += ` LIMIT ? OFFSET ?`;
-        queryParams.push(parseInt(limit), parseInt(offset));
+        queryParams.push(parseInt(limit), offset);
+
+        console.log("Tested Params:", queryParams);
 
         db.query(query, queryParams, (err, results) => {
             if (err) {
-                return res.status(500).json(new ApiError(500, `Internal server error: ${err.message}`));
+                console.error("Error executing query:", err.message);
+                return res.status(500).json({ message: `Internal server error: ${err.message}` });
             }
             if (results.length === 0) {
-                return res.status(404).json(new ApiError(404, `No products found`));
+                return res.status(404).json({ message: 'No products found' });
             }
-            return res.status(200).json(
-                new ApiResponse(200, results, 'List of products retrieved successfully')
-            );
+            return res.status(200).json({
+                message: 'List of products retrieved successfully',
+                data: results
+            });
         });
     } catch (error) {
-        return res.status(500).json(new ApiError(500, `Error fetching product list: ${error.message}`));
+        console.error("Error in catch block:", error.message);
+        return res.status(500).json({ message: `Error fetching product list: ${error.message}` });
     }
 };
+
