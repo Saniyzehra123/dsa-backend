@@ -10,6 +10,8 @@ router.post('/register', register);   // User registration
 router.post('/login', login);         // User login
 router.post('/logout', logout);       // User logout
 
+router.post('/customer/forgot-password', customerController.forgotPassword);
+router.post('/customer/reset-password', customerController.resetPassword);
 
 router.post('/customer/register', customerController.register);
 router.post('/customer/login', customerController.login);
@@ -28,3 +30,30 @@ router.post('/customer/login', customerController.login);
 // });
 
 module.exports = router;
+
+// const express = require('express');
+// const {
+//     register,
+//     login,
+//     logout,
+//     resetPassword,
+//     forgotPassword 
+// } = require('../controllers/authController');  // Import the new controller functions
+
+// const customerController = require('../controllers/customerController');
+// const router = express.Router();
+
+// // User Routes
+// router.post('/register', register);   // User registration
+// router.post('/login', login);         // User login
+// router.post('/logout', logout);       // User logout
+
+// // Password Reset Routes
+// router.post('/forgot-password', forgotPassword);  // Forgot password
+// router.post('/reset-password', resetPassword);    // Reset password
+
+// // Customer-specific routes (if needed)
+// router.post('/customer/register', customerController.register);
+// router.post('/customer/login', customerController.login);
+
+// module.exports = router;

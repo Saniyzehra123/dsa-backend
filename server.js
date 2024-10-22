@@ -14,6 +14,7 @@ const ApiError = require('./utils/ApiError.js');
 const cors = require('cors');
 const authRoutes = require('./routes/authRoutes');
 const addressRoutes = require('./routes/addressRoutes');
+const contactRoutes = require('./routes/contactRoutes.js');
 
 require('dotenv').config();
 
@@ -37,7 +38,7 @@ app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/shipping', shippingRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/address', addressRoutes);
-
+app.use('/api', contactRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

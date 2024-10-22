@@ -8,43 +8,32 @@ exports.getProductById = async (req, res) => {
 
     try {
         const query = `SELECT 
-                        i.id AS item_id, 
-                        i.sarees_id,
-                        sa.saree_name, 
-                        sa.saree_weight, 
-                        sa.blouse_type_id, 
-                        c.color_name, 
-                        ft.fabric_type_name, 
-                        sa.weave_types, 
-                        sl.saree_length, 
-                        ot.occasion_name, 
-                        co.country_of_origin, 
-                        ic.components_description, 
-                        i.price, 
-                        sa.main_image_url, 
-                        sa.image_url1, 
-                        sa.image_url2, 
-                        sa.image_url3, 
-                        sa.image_url4,
-                        CASE 
-                            WHEN sa.blouse_type_id IS NOT NULL THEN b.blouse_description
-                            ELSE null
-                        END AS blouse_name,
-                        CASE 
-                            WHEN sa.weave_types IS NOT NULL THEN w.weave_type_name
-                            ELSE null
-                        END AS weave_name
-                    FROM saree_attributes sa
-                    INNER JOIN items i ON i.sarees_id = sa.id
-                    INNER JOIN colors c ON c.id = sa.color_id
-                    INNER JOIN fabric_types ft ON ft.id = sa.fabric_type_id
-                    INNER JOIN saree_lengths sl ON sl.id = sa.saree_length_id
-                    INNER JOIN occasion_types ot ON ot.id = sa.occasion_id
-                    INNER JOIN countries co ON co.id = sa.country_id
-                    INNER JOIN included_components ic ON ic.id = sa.included_components_id
-                    LEFT JOIN  blouse_types b ON b.id = sa.blouse_type_id
-                    LEFT JOIN  weave_types w ON w.id = sa.weave_types 
-                    WHERE i.id = ?`;
+		i.id AS item_id, 
+		c.color_name, 
+		ft.fabric_type_name, 
+		ot.occasion_name, 
+		co.country_of_origin,
+		i.price,
+        w.weave_type_name as weave_name,
+        b.blouse_description as blouse_name,
+        ot.occasion_name,
+        i.discount,
+        i.new_arrival,
+        i.des,
+        i.rating,
+        i.stock_quantity,
+        i.code_id,
+        i.image_url1,
+        i.image_url2
+	from items i
+	left JOIN colors c ON c.id = i.color_id
+	left JOIN fabric_types ft ON ft.id = i.fabric_type_id
+	left JOIN saree_lengths sl ON sl.id = i.size_id
+	left JOIN occasion_types ot ON ot.id = i.occasion_id
+	left JOIN countries co ON co.id = i.country_id
+	LEFT JOIN  blouse_types b ON b.id = i.blouse_type_id
+	LEFT JOIN  weave_types w ON w.id = i.weave_types 
+	WHERE i.id = ?`;
 
         db.query(query, [productId], (err, results) => {
             if (err) {
@@ -67,23 +56,33 @@ exports.getAllProducts = async (req, res) => {
     const { color, minPrice, maxPrice, fabricType, occasion, weaveType, sortBy, page = 1, limit = 10 } = req.query;
 
     try {
-        let query = `
-           SELECT 
-                i.id as item_id, i.sarees_id, sa.saree_name, sa.saree_weight, sa.blouse_type_id, 
-               c.color_name, ft.fabric_type_name, sa.weave_types, sl.saree_length, 
-               ot.occasion_name, co.country_of_origin, 
-               ic.components_description, 
-               i.price, 
-               sa.main_image_url, sa.image_url1, sa.image_url2, sa.image_url3, sa.image_url4  
-               FROM saree_attributes sa
-               INNER JOIN items i ON i.sarees_id = sa.id
-               INNER JOIN colors c ON c.id = sa.color_id
-               INNER JOIN fabric_types ft ON ft.id = sa.fabric_type_id
-               INNER JOIN saree_lengths sl ON sl.id = sa.saree_length_id
-               INNER JOIN occasion_types ot ON ot.id = sa.occasion_id
-               INNER JOIN countries co ON co.id = sa.country_id
-               INNER JOIN included_components ic ON ic.id = sa.included_components_id
-               WHERE 1=1`;  // Using 'WHERE 1=1' for easier addition of filters
+        let query = `SELECT 
+		i.id AS item_id, 
+		c.color_name, 
+		ft.fabric_type_name, 
+		ot.occasion_name, 
+		co.country_of_origin,
+		i.price,
+        w.weave_type_name as weave_name,
+        b.blouse_description as blouse_name,
+        ot.occasion_name,
+        i.discount,
+        i.new_arrival,
+        i.des,
+        i.rating,
+        i.stock_quantity,
+        i.code_id,
+        i.image_url1,
+        i.image_url2
+	from items i
+	left JOIN colors c ON c.id = i.color_id
+	left JOIN fabric_types ft ON ft.id = i.fabric_type_id
+	left JOIN saree_lengths sl ON sl.id = i.size_id
+	left JOIN occasion_types ot ON ot.id = i.occasion_id
+	left JOIN countries co ON co.id = i.country_id
+	LEFT JOIN  blouse_types b ON b.id = i.blouse_type_id
+	LEFT JOIN  weave_types w ON w.id = i.weave_types 
+	WHERE 1 = 1`;
 
         let queryParams = [];
 

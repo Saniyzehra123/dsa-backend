@@ -5,25 +5,25 @@ const { ApiResponse } = require('../utils/ApiResponse');
 
 // Add a new address for the customer
 exports.addAddress = async (req, res, next) => {
-    const { customer_id, city, address, state, pincode, country, landmark, mobile, email, firstname, lastname } = req.body;
+    const { customer_id, city, address, state, pincode, country, landmark, mobile, email, firstname, lastname,isbilling } = req.body;
 
     // Check if required fields are missing
-    if (!customer_id || !city || !address || !state || !pincode || !country || !mobile || !email || !firstname || !lastname) {
+    if (!customer_id || !city || !address || !state || !pincode || !country || !firstname || !lastname) {
         return next(new ApiError(400, 'Missing required fields.'));
     }
 
     // Optional fields can have a default value or can be nullable in the database
     const query = `
         INSERT INTO customers_address 
-        (customer_id, city, address, state, pincode, country, landmark, mobile, email, firstname, lastname) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (customer_id, city, address, state, pincode, country, landmark, mobile, email, firstname, lastname,  isbilling) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     console.log("req", req.body); // Debugging
 
     try {
         // Handle cases where landmark might be empty
-        db.query(query, [customer_id, city, address, state, pincode, country, landmark || null, mobile, email, firstname, lastname], (err, result) => {
+        db.query(query, [customer_id, city, address, state, pincode, country, landmark || null, mobile, email, firstname, lastname,  isbilling], (err, result) => {
             if (err) {
                 return next(new ApiError(500, `Error adding address: ${err.message}`));
             }
@@ -60,11 +60,28 @@ exports.getAddresses = async (req, res, next) => {
 
 // Update an address by ID
 exports.updateAddress = async (req, res, next) => {
-    const { address_id, city, address, state, pincode, country } = req.body;
-    const query = `UPDATE customers_address SET city = ?, address = ?, state = ?, pincode = ?, country = ? WHERE id = ?`;
+    const { city, address, state, pincode, country, landmark, mobile, firstname, lastname, address_id } = req.body;
+
+    // Ensure address_id is provided
+    if (!address_id) {
+        return next(new ApiError(400, 'Address ID is required'));
+    }
+
+    const query = `
+        UPDATE customers_address 
+        SET city = ?, 
+            address = ?, 
+            state = ?, 
+            pincode = ?, 
+            country = ?, 
+            landmark = ?, 
+            mobile = ?, 
+            firstname = ?, 
+            lastname = ? 
+        WHERE id = ?`;
 
     try {
-        db.query(query, [city, address, state, pincode, country, address_id], (err, result) => {
+        db.query(query, [city, address, state, pincode, country, landmark, mobile, firstname, lastname, address_id], (err, result) => {
             if (err) {
                 return next(new ApiError(500, `Error updating address: ${err.message}`));
             }
@@ -79,6 +96,7 @@ exports.updateAddress = async (req, res, next) => {
         next(new ApiError(500, `Internal server error: ${error.message}`));
     }
 };
+
 
 // Delete an address by ID
 exports.deleteAddress = async (req, res, next) => {
