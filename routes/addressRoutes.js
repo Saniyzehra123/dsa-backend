@@ -9,7 +9,7 @@ router.post('/add', addressController.addAddress);
 router.get('/:customer_id', addressController.getAddresses);
 
 // Update an existing address
-router.put('/update', addressController.updateAddress);
+router.patch('/update', addressController.updateAddress);
 
 // Delete an address
 router.delete('/delete/:address_id', addressController.deleteAddress);

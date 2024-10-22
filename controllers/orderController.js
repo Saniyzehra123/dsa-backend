@@ -44,18 +44,21 @@ exports.listAllProducts = async (req, res, next) => {
 };
 
 exports.createOrders=async(req, res)=>{
-    const { delivery_id, billing_id, customer_id} = req.body;
+    const { address_id, billing_id, customer_id} = req.body;
+    console.log("orders", req.body)
+
     try {
         const query=`insert into orders(customer_id, delivery_address, billing_address, order_status_id) values(?,?,?,?)`
-        db.query(query, [customer_id,delivery_id,billing_id,1],(err, result) => {
+        db.query(query, [customer_id,address_id,billing_id,1],(err, result) => {
             if (err) {
                 return new ApiError(500, `Error adding Order: ${err.message}`);
             }
-            return res.status(201).json(
-                new ApiResponse(201, { orderId: result.insertId }, 'Order created successfully')
+            return res.status(200).json(
+                new ApiResponse(200, { orderId: result.insertId }, 'Order created successfully')
             );
         });
     } catch (error) {
+        console.log("errormsg",error)
         return new ApiError(400, `Something went wrong ${error}`)
     }
 }

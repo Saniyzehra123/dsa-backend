@@ -8,13 +8,14 @@ const cartRoutes = require('./routes/cart.js');
 const orderRoutes = require('./routes/order.js')
 const wishlistRoutes = require('./routes/wishListRoute.js');
 const shippingRoutes =require('./routes/shippingRoute.js');
-const paymentRoutes = require('./routes/paymentRoutes');
+const paymentgatewayRoutes = require('./routes/paymentgatewayRoutes.js');
 const cookieParser = require('cookie-parser');
 const ApiError = require('./utils/ApiError.js');
 const cors = require('cors');
 const authRoutes = require('./routes/authRoutes');
 const addressRoutes = require('./routes/addressRoutes');
 const contactRoutes = require('./routes/contactRoutes.js');
+const paymentRoutes =require('./routes/paymentRoute.js')
 
 require('dotenv').config();
 
@@ -37,6 +38,7 @@ app.use('/api/order',orderRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/shipping', shippingRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use('/api/paymentgateway', paymentgatewayRoutes);
 app.use('/api/address', addressRoutes);
 app.use('/api', contactRoutes);
 

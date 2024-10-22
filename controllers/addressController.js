@@ -60,10 +60,10 @@ exports.getAddresses = async (req, res, next) => {
 
 // Update an address by ID
 exports.updateAddress = async (req, res, next) => {
-    const { city, address, state, pincode, country, landmark, mobile, firstname, lastname, address_id } = req.body;
-
+    const { city, address, state, pincode, country, landmark, mobile, firstname, lastname, id } = req.body;
+    console.log("user", req.body)
     // Ensure address_id is provided
-    if (!address_id) {
+    if (!id) {
         return next(new ApiError(400, 'Address ID is required'));
     }
 
@@ -81,7 +81,7 @@ exports.updateAddress = async (req, res, next) => {
         WHERE id = ?`;
 
     try {
-        db.query(query, [city, address, state, pincode, country, landmark, mobile, firstname, lastname, address_id], (err, result) => {
+        db.query(query, [city, address, state, pincode, country, landmark, mobile, firstname, lastname, id], (err, result) => {
             if (err) {
                 return next(new ApiError(500, `Error updating address: ${err.message}`));
             }
