@@ -5,10 +5,10 @@ const paymentController = require('../controllers/paymentController');
 // Route to initiate payment
 router.post('/initiate', paymentController.initiatePayment);
 
-// Route for PhonePe callback
-router.post('/callback', paymentController.paymentCallback);
+// // Route for PhonePe callback
+// router.post('/callback', paymentController.paymentCallback);
 
-// Route to verify payment status
-router.post('/verify', paymentController.verifyPayment);
+// // Route to verify payment status
+// router.post('/verify', paymentController.verifyPayment);
 
 module.exports = router;

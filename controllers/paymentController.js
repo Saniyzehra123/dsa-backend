@@ -4,7 +4,7 @@ const config = require('../config/db');
 
 const generateTranId=()=>{
     const timestamp =Date.now();
-    const randumNumber = Math.floor(Math.random()*1000000);
+    const randumNumber = Math.floor(Math.random()*1000);
     const merchantPreFix='T'
     const transactionId = `${merchantPreFix}${timestamp}${randumNumber}`;
     return transactionId;
@@ -13,15 +13,15 @@ const generateTranId=()=>{
 
 exports.initiatePayment=async(req, res)=>{
       const { name, number, amount} = req.body;
+      console.log("req",name,number, amount, generateTranId());
     try {
         const data ={
-            merchantId: "PGTESTPAYUAT",
+            merchantId: process.env.merchantId,
             merchantTransactionId: generateTranId(),
-            merchantUserId: "MUID123",
-            amount: 10000,
-            redirectUrl: "http://localhost:5000/payment-success/",
+            merchantUserId: "MUID1239EDDJHSBD",
+            amount: amount*100,
+            redirectUrl: "http://localhost:3000/payment-success/",
             redirectMode: "POST",
-            callbackUrl: "https://webhook.site/callback-url",
             mobileNumber: number,
             paymentInstrument: {
               type: "PAY_PAGE"
@@ -29,12 +29,13 @@ exports.initiatePayment=async(req, res)=>{
         }
         const payload =JSON.stringify(data);
         const payloadMain= Buffer.from(payload).toString('base64');
-        const key = '099eb0cd-02cf-4e2a-8aca-3e6c6aff0399';
+        const key = process.env.merchantKey;
         const keyIndex=1;
         const string= payloadMain +'/pg/v1/pay'+key;
         const sha256 = crypto.createHash('sha256').update(string).digest('hex');
-        const URL="https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/pay";
-        const checksum = string+'###'+keyIndex;
+        // const URL="https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/pay";
+        const URL="https://api.phonepe.com/apis/hermes/pg/v1/pay";
+        const checksum = sha256 +'###'+keyIndex;
     
         const options = {
             method: 'post',
@@ -43,20 +44,20 @@ exports.initiatePayment=async(req, res)=>{
                   accept: 'text/plain',
                   'Content-Type': 'application/json',
                   "X-VERIFY":checksum
-                          },
+                },
           data: {
             request:payloadMain
           }
         };
-        axios.request(options)
+        await axios.request(options)
             .then(function (response) {
-            console.log(response.data);
+            return console.log("res-data",response.data);
         })
         .catch(function (error) {
-            console.error(error);
+            console.error(`error`,error);
         });
     } catch (error) {
-        
+        console.log('error',error)
     }
 }
 
