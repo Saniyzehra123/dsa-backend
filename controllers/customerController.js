@@ -2,6 +2,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../config/db');
 const validator = require('validator');
+const ApiError = require('../utils/ApiError');
+const { ApiResponse } = require('../utils/ApiResponse');
 
 // Customer Registration
 exports.register = (req, res) => {
@@ -159,6 +161,70 @@ exports.forgotPassword = (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 };
+
+exports.getCustomerDetails=async(req, res)=>{
+    const customerId = req.params.customer_id;
+    console.log("address",customerId);
+    try {
+        let query =`SELECT username as firstname, lastname, email, phone, birthdate, gender, id FROM customers WHERE id = ?`
+        db.query(query, [customerId], (err, results)=>{
+            if(err){
+                return new ApiError(500,   `Error in geting customer:${err}`)
+            }
+            if (results.length === 0) {
+                return res.status(404).json({ message: 'No addresses found for this customer' });
+            }
+            return res.status(200).json({ data: results[0], message: 'Customer retrieved successfully' });
+        })
+    } catch (error) {
+        return new ApiError(400, `Error fetching addresses: ${err.message}`)
+    }
+}
+
+
+
+
+// Update Customer Details (PATCH)
+exports.updateCustomerProfile = async (req, res, next) => {
+    const { id, firstname, lastname, email, phone, birthdate, gender } = req.body;
+    let customerId = req.params.customer_id;
+
+    // Log customer_id to check if it is being received
+    console.log("Received customer_id:",  req.body);
+
+    // Ensure customer_id is provided
+    if (!customerId) {
+        return res.status(400).json({ message: 'Customer ID is required' });
+    }
+
+    const query = `
+        UPDATE customers 
+        SET username = ?, 
+            lastname = ?, 
+            email = ?, 
+            phone = ?, 
+            birthdate = ?, 
+            gender = ? 
+        WHERE id = ?`;
+
+    try {
+        db.query(query, [firstname, lastname, email, phone, birthdate, gender, customerId], (err, result) => {
+            console.log("error", err, result)
+            if (err) {
+                return next(new ApiError(500, `Error updating customer profile: ${err.message}`));
+            }
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ message: `Customer not found with ID: ${customerId}` });
+            }
+            return res.status(200).json(
+                new ApiResponse(200,  {id:id}, 'Customer profile updated successfully')
+            );
+        });
+    } catch (error) {
+        next(new ApiError(500, `Internal server error: ${error.message}`));
+    }
+};
+
 
 // exports.forgotPassword = (req, res) => {
 //     try {

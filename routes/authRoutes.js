@@ -9,6 +9,10 @@ const router = express.Router();
 router.post('/register', register);   // User registration
 router.post('/login', login);         // User login
 router.post('/logout', logout);       // User logout
+router.get('/customer/details/:customer_id', customerController.getCustomerDetails);
+// New PATCH route to update customer profile
+router.patch('/customer/profile/:customer_id', customerController.updateCustomerProfile);
+
 
 router.post('/customer/forgot-password', customerController.forgotPassword);
 router.post('/customer/reset-password', customerController.resetPassword);

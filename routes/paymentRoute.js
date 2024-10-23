@@ -9,6 +9,6 @@ router.get('/', paymentController.getPayments);
 router.post('/', paymentController.createPayment);
 
 // PUT to update payment status or method
-router.put('/:payment_id', paymentController.updatePayment);
+router.patch('/:id', paymentController.updatePayment);
 
 module.exports = router;
