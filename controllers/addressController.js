@@ -70,6 +70,7 @@ exports.addAddress = async (req, res, next) => {
 
 // Get all addresses for a specific customer
 exports.getAddresses = async (req, res, next) => {
+    
     const customerId = req.params.customer_id;
     const query = `SELECT * FROM customers_address WHERE customer_id = ?`;
 
