@@ -6,6 +6,7 @@ const { ApiResponse } = require('../utils/ApiResponse.js');
 // Controller function to list all products with order details
 exports.listAllProducts = async (req, res, next) => {
   const { customer_id, order_id } = req.params;
+  console.log("orders", req.params )
   try {
       let query = `
           SELECT
@@ -31,6 +32,51 @@ exports.listAllProducts = async (req, res, next) => {
       if (order_id) {
           query += ' AND o.id = ?';
           queryParams.push(order_id);
+      }
+
+      db.query(query, queryParams, (err, results) => {
+          if (err) {
+              return next(new ApiError(500, `Database query failed: ${err.message}`));
+          }
+          if (results.length === 0) {
+              return next(new ApiError(404, 'No orders found'));
+          }
+          return res.status(200).json(
+              new ApiResponse(200, results, 'List of orders retrieved successfully')
+          );
+      });
+  } catch (error) {
+      next(new ApiError(500, `Error fetching order details: ${error.message}`));
+  }
+};
+exports.OrderDetail  = async (req, res, next) => {
+  const { customer_id, order_id } = req.params;
+  console.log("orders", req.params )
+  try {
+      let query = `
+          SELECT
+              o.id as order_id,
+              oi.item_id,
+              oi.quantity,
+              oi.price,
+              c.username as customer_name,
+              ca.address,
+              ca.city,
+              ca.state,
+              ca.pincode,
+              ca.country
+          FROM orders o
+          INNER JOIN order_items oi ON oi.order_id = o.id
+          INNER JOIN items i ON i.id = oi.item_id
+          INNER JOIN customers c ON c.id = o.customer_id
+          INNER JOIN customers_address ca ON ca.customer_id = c.id
+          WHERE c.id = ?`;
+
+      const queryParams = [customer_id];
+      // Add customer_id filter if it's provided
+      if (order_id) {
+        query += ' AND o.id = ?';
+        queryParams.push(order_id);
       }
 
       db.query(query, queryParams, (err, results) => {
