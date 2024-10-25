@@ -62,6 +62,34 @@ exports.createOrders=async(req, res)=>{
         return new ApiError(400, `Something went wrong ${error}`)
     }
 }
+exports.createOrderItem = async (req, res) => {
+    const { data, orderId } = req.body;
+    try {
+      let query = `INSERT INTO order_items(order_id, item_id, quantity, price) VALUES (?, ?, ?, ?)`;
+      
+      // Use Promise.all to handle asynchronous queries
+      const insertPromises = data.map((item) => {
+        const { id, price, quantity } = item;
+        return new Promise((resolve, reject) => {
+          db.query(query, [orderId, id, quantity, price], (error, result) => {
+            if (error) {
+              reject(error); // If an error occurs, reject the promise
+            } else {
+              resolve(result); // Otherwise, resolve the promise
+            }
+          });
+        });
+      });
+  
+      // Wait for all insertions to finish
+      await Promise.all(insertPromises);
+      // Send success response after all items are inserted
+      res.status(200).json({ message: 'Order items added successfully' });
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to add order items', error });
+    }
+  };
+  
 
 
 
