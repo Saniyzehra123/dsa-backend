@@ -151,10 +151,10 @@ exports.forgotPassword = (req, res) => {
             const resetToken = jwt.sign({ id: customer.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
             // Simulate sending an email with the reset link (replace with actual email sending logic)
-            const resetLink = `http://localhost:3000/reset-password?token=${resetToken}`;
+            const resetLink = `http://yourwebsite.com/reset-password?token=${resetToken}`;
 
             // For testing purposes, return the link in the response (in production, send via email)
-            res.status(200).json({ message: 'Password reset link sent to email', link: resetLink });
+            res.status(200).json({ message: 'Password reset link sent to email', resetLink });
         });
     } catch (error) {
         console.log('Error in forgot password', error);
