@@ -5,27 +5,36 @@ const { ApiResponse } = require('../utils/ApiResponse.js');
 
 // Controller function to list all products with order details
 exports.listAllProducts = async (req, res, next) => {
-  const { customer_id, order_id } = req.params;
-  console.log("orders", req.params )
+  const { customer_id, order_id } = req.query;
+  // console.log("orders", req.params )
   try {
       let query = `
-          SELECT
-              o.id as order_id,
-              oi.item_id,
-              oi.quantity,
-              oi.price,
-              c.username as customer_name,
-              ca.address,
-              ca.city,
-              ca.state,
-              ca.pincode,
-              ca.country
-          FROM orders o
-          INNER JOIN order_items oi ON oi.order_id = o.id
-          INNER JOIN items i ON i.id = oi.item_id
-          INNER JOIN customers c ON c.id = o.customer_id
-          INNER JOIN customers_address ca ON ca.customer_id = c.id
-          WHERE c.id = ?`;
+      SELECT
+      o.id AS order_id,
+      o.created_at,               -- Created at time from orders table
+      oi.item_id,
+      oi.quantity,
+      oi.price,
+      c.username AS customer_name,
+      ca.address,
+      ca.city,
+      ca.state,
+      ca.pincode,
+      ca.country,
+      i.main_image_url,           -- Main image URL from items table
+      i.code_id, 
+      i.des,                      -- Description from items table
+      os.status_type,             -- Status type from order_status table
+      pm.methods AS payment_method -- Payment method from payment_methods table
+      FROM orders o
+      INNER JOIN order_items oi ON oi.order_id = o.id
+      INNER JOIN items i ON i.id = oi.item_id
+      INNER JOIN customers c ON c.id = o.customer_id
+      INNER JOIN customers_address ca ON ca.customer_id = c.id
+      INNER JOIN order_status os ON os.id = o.order_status_id
+      INNER JOIN payment p ON p.order_id = o.id                    -- Join payments table on order_id
+      INNER JOIN payment_methods pm ON pm.id = p.payment_method_id  -- Join payment_methods table on payment_method_id
+      WHERE c.id =?`;
       const queryParams = [customer_id];
 
       // Add customer_id filter if it's provided

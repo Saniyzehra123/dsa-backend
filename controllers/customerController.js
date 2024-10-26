@@ -4,6 +4,7 @@ const db = require('../config/db');
 const validator = require('validator');
 const ApiError = require('../utils/ApiError');
 const { ApiResponse } = require('../utils/ApiResponse');
+const nodemailer = require('nodemailer');
 
 // Customer Registration
 exports.register = (req, res) => {
@@ -74,62 +75,54 @@ exports.login = (req, res) => {
     });
 };
 
+// Reset Password
 exports.resetPassword = (req, res) => {
-    try {
-        const { token, password, resetPassword } = req.body;
+    // const { token } = req.query; // Get token from query parameters
+    const { token, password, resetPassword } = req.body;
 
-        // Validate input
-        if (!token) {
-            return res.status(400).json({ message: 'Token is required' });
-        }
+    // Validate input
+    if (!token) {
+        return res.status(400).json({ message: 'Token is required' });
+    }
 
-        if (!password || !resetPassword) {
-            return res.status(400).json({ message: 'Both password fields are required' });
-        }
+    if (!password || !resetPassword) {
+        return res.status(400).json({ message: 'Both password fields are required' });
+    }
 
-        if (password !== resetPassword) {
-            return res.status(400).json({ message: 'Passwords do not match' });
-        }
+    if (password !== resetPassword) {
+        return res.status(400).json({ message: 'Passwords do not match' });
+    }
 
-        if (!validator.isLength(password, { min: 6 })) {
-            return res.status(400).json({ message: 'Password must be at least 6 characters long' });
-        }
+    if (!validator.isLength(password, { min: 6 })) {
+        return res.status(400).json({ message: 'Password must be at least 6 characters long' });
+    }
 
-        // Find the customer by auth token
-        db.query('SELECT * FROM customers WHERE auth_token = ?', [token], (err, result) => {
-            if (err || result.length === 0) {
-                return res.status(400).json({ message: 'Invalid token or customer not found' });
-            }
+    // Verify the token
+    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+        if (err) return res.status(400).json({ message: 'Invalid or expired token' });
 
-            const customer = result[0];
+        const customerId = decoded.id;
 
-            // Hash the new password
-            bcrypt.hash(password, 10, (err, hashedPassword) => {
-                if (err) return res.status(500).json({ message: 'Error hashing password' });
+        // Hash the new password
+        bcrypt.hash(password, 10, (err, hashedPassword) => {
+            if (err) return res.status(500).json({ message: 'Error hashing password' });
 
-                // Update the password in the database
-                const updatePasswordSql = 'UPDATE customers SET password = ? WHERE id = ?';
-                db.query(updatePasswordSql, [hashedPassword, customer.id], (err) => {
-                    if (err) return res.status(500).json({ message: 'Error updating password' });
+            // Update the password in the database
+            const updatePasswordSql = 'UPDATE customers SET password = ?, auth_token = NULL WHERE id = ?';
+            db.query(updatePasswordSql, [hashedPassword, customerId], (err) => {
+                if (err) return res.status(500).json({ message: 'Error updating password' });
 
-                    // Optionally, invalidate the old token by setting it to null
-                    const clearTokenSql = 'UPDATE customers SET auth_token = NULL WHERE id = ?';
-                    db.query(clearTokenSql, [customer.id], (err) => {
-                        if (err) return res.status(500).json({ message: 'Error clearing token' });
-
-                        res.status(200).json({ message: 'Password reset successfully' });
-                    });
-                });
+                res.status(200).json({ message: 'Password reset successfully' });
             });
         });
-    } catch (error) {
-        console.log('Error resetting password', error);
-        res.status(500).json({ message: 'Server error' });
-    }
+    });
 };
 
+
 // Forgot Password
-exports.forgotPassword = (req, res) => {
+
+// Forgot Password
+exports.forgotPassword = async (req, res) => {
     try {
         const { email } = req.body;
 
@@ -140,7 +133,7 @@ exports.forgotPassword = (req, res) => {
 
         // Check if the email exists in the database
         const sql = 'SELECT * FROM customers WHERE email = ?';
-        db.query(sql, [email], (err, result) => {
+        db.query(sql, [email], async (err, result) => {
             if (err || result.length === 0) {
                 return res.status(400).json({ message: 'Customer with this email does not exist' });
             }
@@ -150,17 +143,185 @@ exports.forgotPassword = (req, res) => {
             // Generate a reset token (JWT token)
             const resetToken = jwt.sign({ id: customer.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
-            // Simulate sending an email with the reset link (replace with actual email sending logic)
-            const resetLink = `http://yourwebsite.com/reset-password?token=${resetToken}`;
+            // Construct the reset link
+            const resetLink = `http://localhost:3000/reset-password?token=${resetToken}`;
 
-            // For testing purposes, return the link in the response (in production, send via email)
-            res.status(200).json({ message: 'Password reset link sent to email', resetLink });
+            // Set up Nodemailer for sending emails
+            let transporter = nodemailer.createTransport({
+                host: process.env.SMTP_HOST,
+                port: process.env.SMTP_PORT,
+                secure: process.env.SMTP_PORT == '465',
+                auth: {
+                    user: process.env.EMAIL_USER,
+                    pass: process.env.EMAIL_PASSWORD,
+                },
+            });
+
+            // Email options with HTML button
+            const mailOptions = {
+                from: process.env.EMAIL_USER,
+                to: email,
+                subject: 'Password Reset Request',
+                html: `
+                    <p>You requested a password reset. Click the button below to reset your password:</p>
+                    <a href="${resetLink}" style="background-color: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Reset Your Password</a>
+                    <p>If you did not request this, please ignore this email.</p>
+                `,
+            };
+
+            // Send email
+            await transporter.sendMail(mailOptions);
+
+            res.status(200).json({ message: 'Password reset link sent to email' });
         });
     } catch (error) {
         console.log('Error in forgot password', error);
         res.status(500).json({ message: 'Server error' });
     }
 };
+
+// exports.forgotPassword = async (req, res) => {
+//     try {
+//         const { email } = req.body;
+
+//         // Validate email
+//         if (!email || !validator.isEmail(email)) {
+//             return res.status(400).json({ message: 'A valid email is required' });
+//         }
+
+//         // Check if the email exists in the database
+//         const sql = 'SELECT * FROM customers WHERE email = ?';
+//         db.query(sql, [email], async (err, result) => {
+//             if (err || result.length === 0) {
+//                 return res.status(400).json({ message: 'Customer with this email does not exist' });
+//             }
+
+//             const customer = result[0];
+
+//             // Generate a reset token (JWT token)
+//             const resetToken = jwt.sign({ id: customer.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+//             // Send email with reset link
+//             const resetLink = `http://localhost:3000/reset-password?token=${resetToken}`;
+
+//             // Set up Nodemailer for sending emails
+//             let transporter = nodemailer.createTransport({
+//                 host: process.env.SMTP_HOST,
+//                 port: process.env.SMTP_PORT,
+//                 secure: process.env.SMTP_PORT == '465',
+//                 auth: {
+//                     user: process.env.EMAIL_USER,
+//                     pass: process.env.EMAIL_PASSWORD,
+//                 },
+//             });
+
+//             // Email options
+//             const mailOptions = {
+//                 from: process.env.EMAIL_USER,
+//                 to: email,
+//                 subject: 'Password Reset Request',
+//                 text: `You requested a password reset. Click the link below to reset your password:\n\n${resetLink}\n\nIf you did not request this, please ignore this email.`,
+//             };
+
+//             // Send email
+//             await transporter.sendMail(mailOptions);
+
+//             res.status(200).json({ message: 'Password reset link sent to email' });
+//         });
+//     } catch (error) {
+//         console.log('Error in forgot password', error);
+//         res.status(500).json({ message: 'Server error' });
+//     }
+// };
+
+
+// exports.resetPassword = (req, res) => {
+//     try {
+//         const { token, password, resetPassword } = req.body;
+
+//         // Validate input
+//         if (!token) {
+//             return res.status(400).json({ message: 'Token is required' });
+//         }
+
+//         if (!password || !resetPassword) {
+//             return res.status(400).json({ message: 'Both password fields are required' });
+//         }
+
+//         if (password !== resetPassword) {
+//             return res.status(400).json({ message: 'Passwords do not match' });
+//         }
+
+//         if (!validator.isLength(password, { min: 6 })) {
+//             return res.status(400).json({ message: 'Password must be at least 6 characters long' });
+//         }
+
+//         // Find the customer by auth token
+//         db.query('SELECT * FROM customers WHERE auth_token = ?', [token], (err, result) => {
+//             if (err || result.length === 0) {
+//                 return res.status(400).json({ message: 'Invalid token or customer not found' });
+//             }
+
+//             const customer = result[0];
+
+//             // Hash the new password
+//             bcrypt.hash(password, 10, (err, hashedPassword) => {
+//                 if (err) return res.status(500).json({ message: 'Error hashing password' });
+
+//                 // Update the password in the database
+//                 const updatePasswordSql = 'UPDATE customers SET password = ? WHERE id = ?';
+//                 db.query(updatePasswordSql, [hashedPassword, customer.id], (err) => {
+//                     if (err) return res.status(500).json({ message: 'Error updating password' });
+
+//                     // Optionally, invalidate the old token by setting it to null
+//                     const clearTokenSql = 'UPDATE customers SET auth_token = NULL WHERE id = ?';
+//                     db.query(clearTokenSql, [customer.id], (err) => {
+//                         if (err) return res.status(500).json({ message: 'Error clearing token' });
+
+//                         res.status(200).json({ message: 'Password reset successfully' });
+//                     });
+//                 });
+//             });
+//         });
+//     } catch (error) {
+//         console.log('Error resetting password', error);
+//         res.status(500).json({ message: 'Server error' });
+//     }
+// };
+
+// Forgot Password
+// exports.forgotPassword = (req, res) => {
+//     try {
+//         const { email } = req.body;
+
+//         // Validate email
+//         if (!email || !validator.isEmail(email)) {
+//             return res.status(400).json({ message: 'A valid email is required' });
+//         }
+
+//         // Check if the email exists in the database
+//         const sql = 'SELECT * FROM customers WHERE email = ?';
+//         db.query(sql, [email], (err, result) => {
+//             if (err || result.length === 0) {
+//                 return res.status(400).json({ message: 'Customer with this email does not exist' });
+//             }
+
+//             const customer = result[0];
+
+//             // Generate a reset token (JWT token)
+//             const resetToken = jwt.sign({ id: customer.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+//             // Simulate sending an email with the reset link (replace with actual email sending logic)
+//             const resetLink = `http://yourwebsite.com/reset-password?token=${resetToken}`;
+
+//             // For testing purposes, return the link in the response (in production, send via email)
+//             res.status(200).json({ message: 'Password reset link sent to email', resetLink });
+//         });
+//     } catch (error) {
+//         console.log('Error in forgot password', error);
+//         res.status(500).json({ message: 'Server error' });
+//     }
+// };
 
 exports.getCustomerDetails=async(req, res)=>{
     const customerId = req.params.customer_id;
