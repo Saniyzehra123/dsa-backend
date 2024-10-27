@@ -3,7 +3,6 @@ const jwt = require('jsonwebtoken');
 const db = require('../config/db');
 const validator = require('validator');
 
-
 // User Registration (no role)
 
 exports.register = (req, res) => {
@@ -76,7 +75,6 @@ exports.login = (req, res) => {
   });
 };
 
-
 // exports.adminLogin = (req, res) => {
 //   const { email, password } = req.body;
 
@@ -110,7 +108,6 @@ exports.login = (req, res) => {
 //     });
 //   });
 // };
-
 
 exports.logout = (req, res) => {
   res.clearCookie('token').status(200).json({ message: 'Logged out successfully' });
