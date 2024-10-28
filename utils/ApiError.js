@@ -1,8 +1,9 @@
 // utils/ApiError.js
-class ApiError extends Error {
+class ApiError{
   constructor(statusCode, message) {
-    super(message);
+    // super(message);
     this.statusCode = statusCode;
+    this.message = message;
   }
 }
 
