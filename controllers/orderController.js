@@ -88,13 +88,18 @@ exports.OrderDetail = async (req, res, next) => {
           ot.total_items,
           i.main_image_url,
           oi.price,
-          oi.quantity
+          oi.quantity,
+          pm.methods as payment_method,
+          ps.payment_status as payment_status
       FROM orders o
       INNER JOIN order_items oi ON oi.order_id = o.id
       INNER JOIN items i ON i.id = oi.item_id
       INNER JOIN customers c ON c.id = o.customer_id
       LEFT JOIN customers_address ca ON ca.customer_id = c.id
       INNER JOIN OrderTotals ot ON ot.order_id = o.id
+      LEFT JOIN payment p ON p.order_id = o.id
+      left join payment_methods pm on pm.id=p.payment_method_id
+      left join payment_status ps on ps.id=p.payment_status_id
       WHERE o.id = ?`;
     
     const queryParams = [order_id];
@@ -121,6 +126,10 @@ exports.OrderDetail = async (req, res, next) => {
         total_quantity: results[0].total_quantity,
         total_amount: results[0].total_amount,
         total_items: results[0].total_items,
+        payment: {
+          payment_status: results[0].payment_status,
+          payment_method: results[0].payment_method
+        },
         order_items: results.map(item => ({
           order_item_id: item.order_item_id,
           main_image_url: item.main_image_url,
@@ -138,6 +147,7 @@ exports.OrderDetail = async (req, res, next) => {
     next(new ApiError(500, `Error fetching order details: ${error.message}`));
   }
 };
+
 
 
 exports.createOrders=async(req, res)=>{
