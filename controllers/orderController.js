@@ -59,51 +59,86 @@ exports.listAllProducts = async (req, res, next) => {
       next(new ApiError(500, `Error fetching order details: ${error.message}`));
   }
 };
-exports.OrderDetail  = async (req, res, next) => {
-  const { customer_id, order_id } = req.params;
-  console.log("orders", req.params )
-  try {
-      let query = `
-          SELECT
-              o.id as order_id,
-              oi.item_id,
-              oi.quantity,
-              oi.price,
-              c.username as customer_name,
-              ca.address,
-              ca.city,
-              ca.state,
-              ca.pincode,
-              ca.country
-          FROM orders o
-          INNER JOIN order_items oi ON oi.order_id = o.id
-          INNER JOIN items i ON i.id = oi.item_id
-          INNER JOIN customers c ON c.id = o.customer_id
-          INNER JOIN customers_address ca ON ca.customer_id = c.id
-          WHERE c.id = ?`;
 
-      const queryParams = [customer_id];
-      // Add customer_id filter if it's provided
-      if (order_id) {
-        query += ' AND o.id = ?';
-        queryParams.push(order_id);
+exports.OrderDetail = async (req, res, next) => {
+  const { customer_id, order_id } = req.params;
+  console.log("orders", req.params);
+  
+  try {
+    let query = `WITH OrderTotals AS (
+          SELECT
+            oi.order_id,
+            SUM(oi.price * oi.quantity) AS total_amount,
+            SUM(oi.quantity) AS total_quantity,
+            COUNT(DISTINCT oi.item_id) AS total_items
+          FROM order_items oi
+          GROUP BY oi.order_id
+      )
+      SELECT
+          o.id AS order_id,
+          oi.id AS order_item_id,
+          c.username AS customer_name,
+          ca.address,
+          ca.city,
+          ca.state,
+          ca.pincode,
+          ca.country,
+          ot.total_quantity,
+          ot.total_amount,
+          ot.total_items,
+          i.main_image_url,
+          oi.price,
+          oi.quantity
+      FROM orders o
+      INNER JOIN order_items oi ON oi.order_id = o.id
+      INNER JOIN items i ON i.id = oi.item_id
+      INNER JOIN customers c ON c.id = o.customer_id
+      LEFT JOIN customers_address ca ON ca.customer_id = c.id
+      INNER JOIN OrderTotals ot ON ot.order_id = o.id
+      WHERE o.id = ?`;
+    
+    const queryParams = [order_id];
+    
+    db.query(query, queryParams, (err, results) => {
+      if (err) {
+        return next(new ApiError(500, `Database query failed: ${err.message}`));
+      }
+      if (results.length === 0) {
+        return next(new ApiError(404, 'No orders found'));
       }
 
-      db.query(query, queryParams, (err, results) => {
-          if (err) {
-              return next(new ApiError(500, `Database query failed: ${err.message}`));
-          }
-          if (results.length === 0) {
-              return next(new ApiError(404, 'No orders found'));
-          }
-          return res.status(200).json(
-              new ApiResponse(200, results, 'List of orders retrieved successfully')
-          );
-      });
+      // Structure the results
+      const orderDetails = {
+        order_id: results[0].order_id,
+        customer_name: results[0].customer_name,
+        address: {
+          address: results[0].address,
+          city: results[0].city,
+          state: results[0].state,
+          pincode: results[0].pincode,
+          country: results[0].country,
+        },
+        total_quantity: results[0].total_quantity,
+        total_amount: results[0].total_amount,
+        total_items: results[0].total_items,
+        order_items: results.map(item => ({
+          order_item_id: item.order_item_id,
+          main_image_url: item.main_image_url,
+          price: item.price,
+          quantity: item.quantity,
+          total_price: item.quantity * item.price
+        }))
+      };
+      
+      return res.status(200).json(
+        new ApiResponse(200, orderDetails, 'Order details retrieved successfully')
+      );
+    });
   } catch (error) {
-      next(new ApiError(500, `Error fetching order details: ${error.message}`));
+    next(new ApiError(500, `Error fetching order details: ${error.message}`));
   }
 };
+
 
 exports.createOrders=async(req, res)=>{
     const { address_id, billing_id, customer_id} = req.body;
@@ -142,10 +177,7 @@ exports.createOrderItem = async (req, res) => {
           });
         });
       });
-  
-      // Wait for all insertions to finish
       await Promise.all(insertPromises);
-      // Send success response after all items are inserted
       res.status(200).json({ message: 'Order items added successfully' });
     } catch (error) {
       res.status(500).json({ message: 'Failed to add order items', error });

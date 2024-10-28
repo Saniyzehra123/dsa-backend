@@ -7,6 +7,6 @@ const { listAllProducts, createOrders, createOrderItem,OrderDetail } = require('
 router.get('/search', listAllProducts);
 router.post('/add', createOrders);
 router.post('/items', createOrderItem)
-router.get('/detail/:customer_id/:order_id', OrderDetail)
+router.get('/detail/:order_id', OrderDetail)
 
 module.exports = router;
