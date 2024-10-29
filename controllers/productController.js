@@ -64,24 +64,22 @@ exports.getAllProducts = async (req, res) => {
 		co.country_of_origin,
 		i.price,
         w.weave_type_name as weave_name,
-        b.blouse_description as blouse_name,
         ot.occasion_name,
         i.discount,
         i.new_arrival,
         i.des,
         i.rating,
         i.stock_quantity,
-        i.code_id,
+        i.code_name,
         i.image_url1,
         i.image_url2
 	from items i
 	left JOIN colors c ON c.id = i.color_id
 	left JOIN fabric_types ft ON ft.id = i.fabric_type_id
-	left JOIN saree_lengths sl ON sl.id = i.size_id
+	left JOIN size  sl ON sl.id = i.size_id
 	left JOIN occasion_types ot ON ot.id = i.occasion_id
 	left JOIN countries co ON co.id = i.country_id
-	LEFT JOIN  blouse_types b ON b.id = i.blouse_type_id
-	LEFT JOIN  weave_types w ON w.id = i.weave_types 
+	LEFT JOIN  weave_types w ON w.id = i.weave_type_id 
 	WHERE 1 = 1`;
 
         let queryParams = [];
