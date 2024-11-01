@@ -6,26 +6,33 @@ const { ApiResponse } = require('../utils/ApiResponse.js');
 // Controller function to list all products with order details
 exports.listAllProducts = async (req, res, next) => {
   const { customer_id, order_id } = req.query;
-  // console.log("orders", req.params )
   try {
-      let query = `
+    let query = `
+      WITH OrderTotals AS (
+        SELECT
+          oi.order_id,
+          COUNT(DISTINCT oi.item_id) AS total_items
+        FROM order_items oi
+        GROUP BY oi.order_id
+      )
       SELECT
-      o.id AS order_id,
-      o.created_at,
-      oi.item_id,
-      oi.quantity,
-      oi.price,
-      c.username AS customer_name,
-      ca.address,
-      ca.city,
-      ca.state,
-      ca.pincode,
-      ca.country,
-      i.main_image_url,
-      i.code_id, 
-      i.des,
-      os.status_type,
-      pm.methods AS payment_method 
+        o.id AS order_id,
+        o.created_at,
+        oi.item_id,
+        oi.quantity,
+        oi.price,
+        c.username AS customer_name,
+        ca.address,
+        ca.city,
+        ca.state,
+        ca.pincode,
+        ca.country,
+        i.main_image_url,
+        i.code_id, 
+        i.des,
+        os.status_type,
+        pm.methods AS payment_method,
+        ot.total_items
       FROM orders o
       INNER JOIN order_items oi ON oi.order_id = o.id
       INNER JOIN items i ON i.id = oi.item_id
@@ -33,30 +40,30 @@ exports.listAllProducts = async (req, res, next) => {
       INNER JOIN customers_address ca ON ca.customer_id = c.id
       INNER JOIN order_status os ON os.id = o.order_status_id
       INNER JOIN payment p ON p.order_id = o.id 
-      left JOIN payment_methods pm ON pm.id = p.payment_method_id
-      WHERE c.id =?`;
-      const queryParams = [customer_id];
+      INNER JOIN payment_methods pm ON pm.id = p.payment_method_id
+      LEFT JOIN OrderTotals ot ON ot.order_id = o.id
+      WHERE c.id = ?
+    `;
+    const queryParams = [customer_id];
 
-      // Add customer_id filter if it's provided
-      if (order_id) {
-          query += ' AND o.id = ?';
-          queryParams.push(order_id);
+    if (order_id) {
+      query += ' AND o.id = ?';
+      queryParams.push(order_id);
+    }
+
+    db.query(query, queryParams, (err, results) => {
+      if (err) {
+        return next(new ApiError(500, `Database query failed: ${err.message}`));
       }
-
-
-      db.query(query, queryParams, (err, results) => {
-          if (err) {
-              return next(new ApiError(500, `Database query failed: ${err.message}`));
-          }
-          if (results.length === 0) {
-              return next(new ApiError(404, 'No orders found'));
-          }
-          return res.status(200).json(
-              new ApiResponse(200, results, 'List of orders retrieved successfully')
-          );
-      });
+      if (results.length === 0) {
+        return next(new ApiError(404, 'No orders found'));
+      }
+      return res.status(200).json(
+        new ApiResponse(200, results, 'List of orders retrieved successfully')
+      );
+    });
   } catch (error) {
-      next(new ApiError(500, `Error fetching order details: ${error.message}`));
+    next(new ApiError(500, `Error fetching order details: ${error.message}`));
   }
 };
 
