@@ -33,7 +33,7 @@ exports.listAllProducts = async (req, res, next) => {
       INNER JOIN customers_address ca ON ca.customer_id = c.id
       INNER JOIN order_status os ON os.id = o.order_status_id
       INNER JOIN payment p ON p.order_id = o.id 
-      INNER JOIN payment_methods pm ON pm.id = p.payment_method_id
+      left JOIN payment_methods pm ON pm.id = p.payment_method_id
       WHERE c.id =?`;
       const queryParams = [customer_id];
 
@@ -148,14 +148,11 @@ exports.OrderDetail = async (req, res, next) => {
   }
 };
 
-
-
 exports.createOrders=async(req, res)=>{
     const { address_id, billing_id, customer_id} = req.body;
     console.log("orders", req.body)
-
     try {
-        const query=`insert into orders(customer_id, delivery_address, billing_address, order_status_id) values(?,?,?,?)`
+        const query=`insert into orders(customer_id, delivery_address, billing_address, order_status_id) values(?,?,?,1)`
         db.query(query, [customer_id,address_id,billing_id,1],(err, result) => {
             if (err) {
                 return new ApiError(500, `Error adding Order: ${err.message}`);
