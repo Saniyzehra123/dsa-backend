@@ -136,7 +136,7 @@ exports.getItemWeave= async(req, res)=>{
 exports.getItemSize= async(req, res)=>{
    
     try {
-        const  query = `Select * from size_types where 1 = 1 `
+        const  query = `Select * from size where 1 = 1 `
         db.query(query,(error,result) => {
             console.log("error", error)
             if(error){
