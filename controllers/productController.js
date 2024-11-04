@@ -57,10 +57,8 @@ exports.getAllProducts = async (req, res) => {
 
     try {
         let query = `SELECT 
-		i.id AS item_id, 
-		c.color_name, 
+		i.id AS item_id,
 		ft.fabric_type_name, 
-		ot.occasion_name, 
 		co.country_of_origin,
 		i.price,
         w.weave_type_name as weave_name,
@@ -72,14 +70,31 @@ exports.getAllProducts = async (req, res) => {
         i.stock_quantity,
         i.code_name,
         i.image_url1,
-        i.image_url2
+        i.image_url2,
+        i.image_url3,
+        i.image_url4,
+        i.image_url5,
+        i.image_url6,
+        i.main_image_url,
+        c.color_name,
+        c.color_des,
+        c.color_code,
+        i.title,
+        i.new_arrival,
+        s.size,
+        st.saree_name,
+        i.weight,
+        i.stock_quantity,
+        i.included_components,
+        i.boluse_des
 	from items i
 	left JOIN colors c ON c.id = i.color_id
 	left JOIN fabric_types ft ON ft.id = i.fabric_type_id
-	left JOIN size  sl ON sl.id = i.size_id
+	left JOIN size s ON s.id = i.size_id
 	left JOIN occasion_types ot ON ot.id = i.occasion_id
 	left JOIN countries co ON co.id = i.country_id
 	LEFT JOIN  weave_types w ON w.id = i.weave_type_id 
+    left join saree_types st on st.id= i.saree_type_id
 	WHERE 1 = 1`;
 
         let queryParams = [];
@@ -112,9 +127,9 @@ exports.getAllProducts = async (req, res) => {
 
         // Sorting
         if (sortBy === 'price_asc') {
-            query += ` ORDER BY i.price ASC`;
+            query += `ORDER BY i.price ASC`;
         } else if (sortBy === 'price_desc') {
-            query += ` ORDER BY i.price DESC`;
+            query += `ORDER BY i.price DESC`;
         }
 
         // Pagination (ensure limit and offset are integers)
