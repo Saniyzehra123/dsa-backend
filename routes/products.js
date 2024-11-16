@@ -14,7 +14,7 @@ router.post('/', productController.createProduct); // Added this line
 
 // router.post('/', upload.array('images', 6), productController.createProduct);
 
-router.post('/', upload.array('images', 6), productController.createProduct);
+// router.post('/', upload.array('images', 6), productController.createProduct);
 
 // Route to delete a product by ID
 router.delete('/:id', productController.deleteProduct);

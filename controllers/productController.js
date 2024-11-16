@@ -159,6 +159,7 @@ exports.getAllProducts = async (req, res) => {
         
         
         if (weaveType) {
+            console.log("weavew",weaveType)
             let weaveValues = weaveType.split(',');
             let placeholders = weaveValues.map(() => '?').join(',');
             query += ` AND i.weave_type_id IN (${placeholders})`;

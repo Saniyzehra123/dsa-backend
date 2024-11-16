@@ -16,7 +16,8 @@ const authRoutes = require('./routes/authRoutes');
 const addressRoutes = require('./routes/addressRoutes');
 const contactRoutes = require('./routes/contactRoutes.js');
 const paymentRoutes =require('./routes/paymentRoute.js')
-const adminItem = require("./routes/adminItem.js")
+const adminItem = require("./routes/adminItem.js");
+ 
 
 require('dotenv').config();
 
@@ -43,6 +44,7 @@ app.use('/api/paymentgateway', paymentgatewayRoutes);
 app.use('/api/address', addressRoutes);
 app.use('/api', contactRoutes);
 app.use('/api/adminitem', adminItem)
+ 
 
 // Error handling middleware
 app.use((err, req, res, next) => {
