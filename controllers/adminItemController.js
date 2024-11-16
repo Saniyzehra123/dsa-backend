@@ -34,7 +34,7 @@ exports.getItemCode = async(req, res)=>{
         try {
             const  query = `Select * from item_code where 1 = 1 `
             db.query(query,(error,result) => {
-                console.log("error", error)
+                // console.log("error", error)
                 if(error){
                     return  res.status(400).json(
                       new ApiError(400,`error : ${error}`)
@@ -60,7 +60,7 @@ exports.getItemColors= async(req, res)=>{
     try {
         const  query = `Select * from colors where 1 = 1 `
         db.query(query,(error,result) => {
-            console.log("error", error)
+            // console.log("error", error)
             if(error){
                 return  res.status(400).json(
                   new ApiError(400,`error : ${error}`)
@@ -86,7 +86,7 @@ exports.getItemFabric= async(req, res)=>{
     try {
         const  query = `Select * from fabric_types where 1 = 1 `
         db.query(query,(error,result) => {
-            console.log("error", error)
+            // console.log("error", error)
             if(error){
                 return  res.status(400).json(
                   new ApiError(400,`error : ${error}`)
@@ -112,7 +112,7 @@ exports.getItemWeave= async(req, res)=>{
     try {
         const  query = `Select * from weave_types where 1 = 1 `
         db.query(query,(error,result) => {
-            console.log("error", error)
+            // console.log("error", error)
             if(error){
                 return  res.status(400).json(
                   new ApiError(400,`error : ${error}`)
@@ -138,7 +138,7 @@ exports.getItemSize= async(req, res)=>{
     try {
         const  query = `Select * from size where 1 = 1 `
         db.query(query,(error,result) => {
-            console.log("error", error)
+            // console.log("error", error)
             if(error){
                 return  res.status(400).json(
                   new ApiError(400,`error : ${error}`)
@@ -164,7 +164,7 @@ exports.getItemOcassion= async(req, res)=>{
     try {
         const  query = `Select * from occasion_types where 1 = 1 `
         db.query(query,(error,result) => {
-            console.log("error", error)
+            // console.log("error", error)
             if(error){
                 return  res.status(400).json(
                   new ApiError(400,`error : ${error}`)
@@ -190,7 +190,7 @@ exports.getItemSaree = async(req, res)=>{
     try {
         const  query = `Select * from saree_types where 1 = 1 `
         db.query(query,(error,result) => {
-            console.log("error", error)
+            // console.log("error", error)
             if(error){
                 return  res.status(400).json(
                   new ApiError(400,`error : ${error}`)
@@ -215,7 +215,7 @@ exports.getItemCountry = async(req, res)=>{
     try {
         const  query = `Select * from countries where 1 = 1 `
         db.query(query,(error,result) => {
-            console.log("error", error)
+            // console.log("error", error)
             if(error){
                 return  res.status(400).json(
                   new ApiError(400,`error : ${error}`)

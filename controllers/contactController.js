@@ -5,7 +5,7 @@ const nodemailer = require('nodemailer');
 // Save contact details and send email
 exports.submitContactForm = async (req, res) => {
     const { first_name, last_name, email, mobile, message } = req.body;
-    console.log("res", first_name, last_name, email, mobile, message);
+    // console.log("res", first_name, last_name, email, mobile, message);
 
     if (!first_name || !last_name || !email || !mobile || !message) {
         return res.status(400).json({ message: 'All fields are required' });
@@ -19,6 +19,7 @@ exports.submitContactForm = async (req, res) => {
 
         // Set up Nodemailer for sending emails
         let transporter = nodemailer.createTransport({
+            
             host: process.env.SMTP_HOST, // SMTP server (like smtp.gmail.com or smtp.office365.com)
             port: process.env.SMTP_PORT, // Port (465 for SSL, 587 for TLS)
             secure: process.env.SMTP_PORT == '465', // Use true if port is 465 (SSL), false if 587 (TLS)
@@ -27,7 +28,8 @@ exports.submitContactForm = async (req, res) => {
               pass: process.env.EMAIL_PASSWORD, // Your email password or app password if using 2FA
             },
         });
-
+        
+        // console.log("trans",transporter)
         // Email to Admin
         const adminMailOptions = {
             from: process.env.EMAIL_USER, // Must be your authenticated SMTP email
@@ -35,7 +37,7 @@ exports.submitContactForm = async (req, res) => {
             subject: 'New Contact Form Submission',
             text: `You have a new query from ${first_name} ${last_name} (${email}, ${mobile}):\n\n${message}`
         };
-
+        // console.log("admintrans",transporter)
         // Email to User
         const userMailOptions = {
             from: process.env.EMAIL_USER, // Must be your authenticated SMTP email

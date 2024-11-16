@@ -1,114 +1,188 @@
+ 
+
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../config/db');
 const validator = require('validator');
+const ApiError = require('../utils/ApiError');
+const { ApiResponse } = require('../utils/ApiResponse');
+const nodemailer = require('nodemailer');
+ 
 
-// User Registration (no role)
-
-exports.register = (req, res) => {
-  const { name, email, password } = req.body;
+// Admin Register
+// Admin Register
+exports.adminRegister = (req, res) => {
+  const { admin_name, email, password } = req.body;
 
   // Validate input
-  if (!name || !email || !password) {
-    return res.status(400).json({ message: 'All fields are required' });
+  if (!admin_name || !email || !password) {
+      return res.status(400).json({ message: 'All fields are required' });
   }
 
   if (!validator.isEmail(email)) {
-    return res.status(400).json({ message: 'Invalid email format' });
+      return res.status(400).json({ message: 'Invalid email format' });
   }
 
-  if (!validator.isLength(password, { min: 6 })) {
-    return res.status(400).json({ message: 'Password must be at least 6 characters long' });
-  }
+  // Check if the admin already exists in the database
+  const sql = 'SELECT * FROM admins WHERE email = ?';
+  db.query(sql, [email], (err, result) => {
+      if (err) {
+          return res.status(500).json({ message: 'Error checking for existing admin' });
+      }
 
-  if (!validator.isAlphanumeric(password)) {
-    return res.status(400).json({ message: 'Password must contain letters and numbers' });
-  }
+      if (result.length > 0) {
+          return res.status(400).json({ message: 'Admin already exists with this email' });
+      }
 
-  // Hash password
-  bcrypt.hash(password, 10, (err, hashedPassword) => {
-    if (err) return res.status(500).json({ message: 'Error hashing password' });
+      // Hash the password using bcrypt
+      bcrypt.hash(password, 10, (err, hashedPassword) => {
+          if (err) {
+              return res.status(500).json({ message: 'Error hashing password' });
+          }
 
-    console.log("hash",hashedPassword)
-    const sql = 'INSERT INTO users (name, email, password) VALUES (?, ?, ?)';
-    db.query(sql, [name, email, hashedPassword], (err, result) => {
-      if (err) return res.status(400).json({ message: 'Email already exists' });
-      res.status(201).json({ message: 'User registered successfully' });
-    });
+          // Insert the new admin into the database
+          const insertAdminSql = 'INSERT INTO admins (admin_name, email, admin_password) VALUES (?, ?, ?)';
+          db.query(insertAdminSql, [admin_name, email, hashedPassword], (err, result) => {
+              if (err) {
+                  return res.status(500).json({ message: 'Error inserting admin into database' });
+              }
+
+              // Optionally, create a JWT token after successful registration
+              const token = jwt.sign({ id: result.insertId }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+              // Send the response with both admin and token
+              res.status(201).json({
+                  message: 'Admin registered successfully',
+                  admin: { id: result.insertId, admin_name, email },
+                  token
+              });
+          });
+      });
   });
 };
 
-// User Login
-exports.login = (req, res) => {
+
+
+
+// Admin Login
+exports.adminLogin = (req, res) => {
   const { email, password } = req.body;
 
-  // Validate input
   if (!email || !password) {
-    return res.status(400).json({ message: 'All fields are required' });
+      return res.status(400).json({ message: 'All fields are required' });
   }
 
   if (!validator.isEmail(email)) {
-    return res.status(400).json({ message: 'Invalid email format' });
+      return res.status(400).json({ message: 'Invalid email format' });
   }
 
-  const sql = 'SELECT * FROM users WHERE email = ?';
+  // Fetch the admin from the database using the email (admin must be manually added)
+  const sql = 'SELECT * FROM admins WHERE email = ?';
   db.query(sql, [email], (err, result) => {
-    if (err || result.length === 0) {
-      return res.status(400).json({ message: 'User not found' });
-    }
+      if (err || result.length === 0) {
+          return res.status(400).json({ message: 'Admin not found' });
+      }
 
-    const user = result[0];
-    console.log("user",user)
-    bcrypt.compare(password, user.password, (err, isMatch) => {
-      if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
+      const admin = result[0];
+      
+      // Compare the provided password with the hashed password stored in the DB
+      bcrypt.compare(password, admin.admin_password, (err, isMatch) => {
+          if (err || !isMatch) return res.status(400).json({ message: 'Invalid credentials' });
 
-      const token = jwt.sign({ id: user.id, is_admin:user.is_admin }, process.env.JWT_SECRET, {
-        expiresIn: '24h'
+          // If credentials match, create and send JWT token
+          const token = jwt.sign({ id: admin.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+          // Send response with both admin and token
+          res.status(200).json({
+              message: 'Admin logged in successfully',
+              admin: { id: admin.id, admin_name: admin.admin_name, email: admin.email,token:token },
+               
+          });
       });
-     
-      console.log("token",token)
-      res.cookie('token', token, { httpOnly: true }).status(200).json({
-        message: 'Logged in successfully',
-        token
-      });
-    });
   });
 };
 
-// exports.adminLogin = (req, res) => {
-//   const { email, password } = req.body;
 
-  
-//   if (!email || !password) {
-//     return res.status(400).json({ message: 'All fields are required' });
-//   }
 
-//   if (!validator.isEmail(email)) {
-//     return res.status(400).json({ message: 'Invalid email format' });
-//   }
+// Admin Forgot Password
+exports.adminForgotPassword = async (req, res) => {
+    const { email } = req.body;
 
-//   const sql = 'SELECT * FROM users WHERE email = ? AND is_admin = 1'; 
-//   db.query(sql, [email], (err, result) => {
-//     if (err || result.length === 0) {
-//       return res.status(400).json({ message: 'Admin not found' });
-//     }
+    if (!email || !validator.isEmail(email)) {
+        return res.status(400).json({ message: 'A valid email is required' });
+    }
 
-//     const admin = result[0];
-//     bcrypt.compare(password, admin.password, (err, isMatch) => {
-//       if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
+    const sql = 'SELECT * FROM admins WHERE email = ?';
+    db.query(sql, [email], async (err, result) => {
+        if (err || result.length === 0) {
+            return res.status(400).json({ message: 'Admin with this email does not exist' });
+        }
 
-//       const token = jwt.sign({ id: admin.id, isAdmin: true }, process.env.JWT_SECRET, {
-//         expiresIn: '1h'
-//       });
+        const admin = result[0];
+        const resetToken = jwt.sign({ id: admin.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        const resetLink = `http://localhost:3000/admin/reset-password?token=${resetToken}`;
 
-//       res.cookie('adminToken', token, { httpOnly: true }).status(200).json({
-//         message: 'Admin logged in successfully',
-//         token
-//       });
-//     });
-//   });
-// };
+        const transporter = nodemailer.createTransport({
+            host: process.env.SMTP_HOST,
+            port: process.env.SMTP_PORT,
+            secure: process.env.SMTP_PORT == '465',
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASSWORD,
+            },
+        });
 
-exports.logout = (req, res) => {
-  res.clearCookie('token').status(200).json({ message: 'Logged out successfully' });
+        const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: email,
+            subject: 'Admin Password Reset Request',
+            html: `
+                <p>You requested a password reset. Click the link below to reset your password:</p>
+                <a href="${resetLink}">Reset Your Password</a>
+                <p>If you did not request this, please ignore this email.</p>
+            `,
+        };
+
+        await transporter.sendMail(mailOptions);
+
+        res.status(200).json({ message: 'Password reset link sent to email' });
+    });
+};
+
+// Admin Reset Password
+exports.adminResetPassword = (req, res) => {
+    const { token, password, resetPassword } = req.body;
+
+    if (!token) {
+        return res.status(400).json({ message: 'Token is required' });
+    }
+
+    if (!password || !resetPassword) {
+        return res.status(400).json({ message: 'Both password fields are required' });
+    }
+
+    if (password !== resetPassword) {
+        return res.status(400).json({ message: 'Passwords do not match' });
+    }
+
+    if (!validator.isLength(password, { min: 6 })) {
+        return res.status(400).json({ message: 'Password must be at least 6 characters long' });
+    }
+
+    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+        if (err) return res.status(400).json({ message: 'Invalid or expired token' });
+
+        const adminId = decoded.id;
+
+        bcrypt.hash(password, 10, (err, hashedPassword) => {
+            if (err) return res.status(500).json({ message: 'Error hashing password' });
+
+            const updatePasswordSql = 'UPDATE admins SET admin_password = ? WHERE id = ?';
+            db.query(updatePasswordSql, [hashedPassword, adminId], (err) => {
+                if (err) return res.status(500).json({ message: 'Error updating password' });
+
+                res.status(200).json({ message: 'Password reset successfully' });
+            });
+        });
+    });
 };

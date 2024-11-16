@@ -24,7 +24,7 @@ const addToWishlist = async (req, res) => {
 // Get all wishlist items for a customer
 const getWishlist = async (req, res) => {
   const { customer_id } = req.params; // Properly extracting customer_id from params
-  console.log("customer", customer_id);
+  // console.log("customer", customer_id);
 
   try {
     const query = `SELECT * FROM wishlist WHERE customer_id = ?`

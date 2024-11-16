@@ -2,6 +2,7 @@
 const db = require('../config/db.js');
 const ApiError = require('../utils/ApiError.js');
 const { ApiResponse } = require('../utils/ApiResponse.js');
+const nodemailer = require('nodemailer');
 
 // Controller function to list all products with order details
 exports.listAllProducts = async (req, res, next) => {
@@ -22,12 +23,17 @@ exports.listAllProducts = async (req, res, next) => {
         oi.quantity,
         oi.price,
         c.username AS customer_name,
+        ca.firstname,
+        ca.lastname,
         ca.address,
+        ca.landmark,
         ca.city,
+        ca.mobile,
         ca.state,
         ca.pincode,
         ca.country,
         i.main_image_url,
+        i.title,
         i.code_id, 
         i.des,
         os.status_type,
@@ -40,17 +46,17 @@ exports.listAllProducts = async (req, res, next) => {
       INNER JOIN customers_address ca ON ca.customer_id = c.id
       INNER JOIN order_status os ON os.id = o.order_status_id
       INNER JOIN payment p ON p.order_id = o.id 
-      INNER JOIN payment_methods pm ON pm.id = p.payment_method_id
+      LEFT JOIN payment_methods pm ON pm.id = p.payment_method_id
       LEFT JOIN OrderTotals ot ON ot.order_id = o.id
       WHERE c.id = ?
     `;
     const queryParams = [customer_id];
 
     if (order_id) {
-      query += ' AND o.id = ?';
+      query += 'AND o.id =?';
       queryParams.push(order_id);
     }
-
+//  console.log("track",queryParams, order_id,customer_id)
     db.query(query, queryParams, (err, results) => {
       if (err) {
         return next(new ApiError(500, `Database query failed: ${err.message}`));
@@ -69,7 +75,7 @@ exports.listAllProducts = async (req, res, next) => {
 
 exports.OrderDetail = async (req, res, next) => {
   const { customer_id, order_id } = req.params;
-  console.log("orders", req.params);
+  // console.log("orders", req.params);
   
   try {
     let query = `WITH OrderTotals AS (
@@ -85,8 +91,12 @@ exports.OrderDetail = async (req, res, next) => {
           o.id AS order_id,
           oi.id AS order_item_id,
           c.username AS customer_name,
+          ca.firstname,
+          ca.lastname,
           ca.address,
+          ca.landmark,
           ca.city,
+          ca.mobile,
           ca.state,
           ca.pincode,
           ca.country,
@@ -94,21 +104,22 @@ exports.OrderDetail = async (req, res, next) => {
           ot.total_amount,
           ot.total_items,
           i.main_image_url,
+          i.title,
           oi.price,
           oi.quantity,
           pm.methods as payment_method,
           ps.payment_status as payment_status
-      FROM orders o
-      INNER JOIN order_items oi ON oi.order_id = o.id
-      INNER JOIN items i ON i.id = oi.item_id
-      INNER JOIN customers c ON c.id = o.customer_id
-      LEFT JOIN customers_address ca ON ca.customer_id = c.id
-      INNER JOIN OrderTotals ot ON ot.order_id = o.id
-      LEFT JOIN payment p ON p.order_id = o.id
-      left join payment_methods pm on pm.id=p.payment_method_id
-      left join payment_status ps on ps.id=p.payment_status_id
-      WHERE o.id = ?`;
-    
+          FROM orders o
+          INNER JOIN order_items oi ON oi.order_id = o.id
+          INNER JOIN items i ON i.id = oi.item_id
+          INNER JOIN customers c ON c.id = o.customer_id
+          LEFT JOIN customers_address ca ON ca.customer_id = c.id
+          INNER JOIN OrderTotals ot ON ot.order_id = o.id
+          LEFT JOIN payment p ON p.order_id = o.id
+          left join payment_methods pm on pm.id=p.payment_method_id
+          left join payment_status ps on ps.id=p.payment_status_id
+          WHERE o.id = ?`;
+
     const queryParams = [order_id];
     
     db.query(query, queryParams, (err, results) => {
@@ -124,8 +135,12 @@ exports.OrderDetail = async (req, res, next) => {
         order_id: results[0].order_id,
         customer_name: results[0].customer_name,
         address: {
+          firstname: results[0].firstname,
+          lastname: results[0].lastname,
           address: results[0].address,
+          landmark: results[0].landmark,
           city: results[0].city,
+          mobile: results[0].mobile,
           state: results[0].state,
           pincode: results[0].pincode,
           country: results[0].country,
@@ -141,6 +156,7 @@ exports.OrderDetail = async (req, res, next) => {
           order_item_id: item.order_item_id,
           main_image_url: item.main_image_url,
           price: item.price,
+          title: item.title,
           quantity: item.quantity,
           total_price: item.quantity * item.price
         }))
@@ -157,7 +173,7 @@ exports.OrderDetail = async (req, res, next) => {
 
 exports.createOrders=async(req, res)=>{
     const { address_id, billing_id, customer_id} = req.body;
-    console.log("orders", req.body)
+    // console.log("orders", req.body)
     try {
         const query=`insert into orders(customer_id, delivery_address, billing_address, order_status_id) values(?,?,?,1)`
         db.query(query, [customer_id,address_id,billing_id,1],(err, result) => {
@@ -173,6 +189,7 @@ exports.createOrders=async(req, res)=>{
         return new ApiError(400, `Something went wrong ${error}`)
     }
 }
+
 exports.createOrderItem = async (req, res) => {
     const { data, orderId } = req.body;
     try {
@@ -197,41 +214,126 @@ exports.createOrderItem = async (req, res) => {
       res.status(500).json({ message: 'Failed to add order items', error });
     }
   };
+
   
+  
+  exports.sendsuccessMail = async (req, res) => {
+    const { email, firstname, lastname, products, totalAmount, shippingAddress } = req.body; // Get details from the frontend
+    
+    try {
+        const orderItems = products.map(product => {
+            return `
+            <div class="item-info">
+                <span>${product.name}</span>
+                <span>Quantity: ${product.quantity}</span>
+                <span>$${product.price}</span>
+            </div>`;
+        }).join('');
+        
+        const html = `<!DOCTYPE html>
+            <html lang="en">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Order Confirmation</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; background-color: #f4f4f4; color: #333; }
+                        .container { max-width: 600px; margin: 20px auto; background-color: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 20px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
+                        .header { text-align: center; padding: 10px 0; }
+                        .header h1 { color: #4CAF50; font-size: 24px; }
+                        .order-details, .customer-details, .shipping-address, .order-summary { margin-bottom: 20px; }
+                        .order-info { display: flex; justify-content: space-between; padding: 5px 0; }
+                        .item-info { border-bottom: 1px solid #f4f4f4; padding-bottom: 10px; }
+                        .total { font-weight: bold; font-size: 16px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1>Thank You for Your Order, ${firstname}!</h1>
+                            <p>Your order has been placed successfully.</p>
+                        </div>
 
+                        <div class="order-details">
+                            <h2>Order Details</h2>
+                            <div class="order-info">
+                                <span>Order Number:</span>
+                                <span>#123456</span> <!-- Add dynamic order ID here -->
+                            </div>
+                            <div class="order-info">
+                                <span>Order Date:</span>
+                                <span>${new Date().toLocaleDateString()}</span> <!-- Current Date -->
+                            </div>
+                        </div>
 
+                        <div class="customer-details">
+                            <h2>Customer Details</h2>
+                            <div class="order-info">
+                                <span>Name:</span>
+                                <span>${firstname} ${lastname}</span>
+                            </div>
+                            <div class="order-info">
+                                <span>Email:</span>
+                                <span>${email}</span>
+                            </div>
+                        </div>
 
-// const db = require('../config/db');
+                        <div class="shipping-address">
+                            <h2>Shipping Address</h2>
+                            <p>${shippingAddress.address}, ${shippingAddress.city}, ${shippingAddress.state}, ${shippingAddress.pincode}, ${shippingAddress.country}</p>
+                        </div>
 
-// const listAllProducts = (req, res) => {
-//     const query = `
-//         SELECT
-//         o.id as order_id,
-//         oi.item_id,
-//         i.name as item_name,
-//         oi.quantity,
-//         oi.price,
-//         c.username as customer_name,
-//         ca.address,
-//         ca.city,
-//         ca.state,
-//         ca.pincode,
-//         ca.country
-//         FROM orders o
-//         INNER JOIN order_items oi ON oi.order_id = o.id
-//         INNER JOIN items i ON i.id = oi.item_id
-//         INNER JOIN customers c ON c.id = o.customer_id
-//         INNER JOIN customers_address ca ON ca.id = c.address_id;
-//     `;
+                        <div class="order-summary">
+                            <h2>Order Summary</h2>
+                            ${orderItems}
+                            <div class="item-info total">
+                                <span>Total:</span>
+                                <span>$${totalAmount}</span> <!-- Dynamic total -->
+                            </div>
+                        </div>
 
-//     db.query(query, (err, results) => {
-//         if (err) {
-//             return res.status(500).json({ error: 'Database query failed', details: err });
-//         }
-//         res.json(results);
-//     });
-// };
+                        <div class="footer">
+                            <p>If you have any questions about your order, please contact us at <a href="mailto:support@example.com">support@example.com</a>.</p>
+                            <p>Thank you for shopping with us!</p>
+                        </div>
+                    </div>
+                </body>
+            </html>`;
 
-// module.exports = {
-//     listAllProducts
-// };
+        // Set up Nodemailer for sending emails
+        let transporter = nodemailer.createTransport({
+            host: process.env.SMTP_HOST,
+            port: parseInt(process.env.SMTP_PORT),
+            secure: parseInt(process.env.SMTP_PORT) === 465,
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASSWORD,
+            },
+        });
+
+        // Admin email notification
+        const adminMailOptions = {
+            from: process.env.EMAIL_USER,
+            to: process.env.EMAIL_USER,
+            subject: 'New Order Submitted',
+            text: `A new order has been placed by ${firstname} ${lastname}.`,
+        };
+
+        // Send email to the customer
+        const userMailOptions = {
+            from: process.env.EMAIL_USER,
+            to: email, // Dynamic customer email
+            subject: 'Thank you for ordering from us!',
+            html: html, // Order confirmation email with details
+        };
+
+        await transporter.sendMail(adminMailOptions);  // Send email to Admin
+        await transporter.sendMail(userMailOptions);    // Send email to User
+
+        res.status(200).json({ message: 'Order placed successfully, confirmation emails sent!' });
+    } catch (error) {
+        console.error('Error in sendsuccessMail:', error);
+        res.status(500).json({ message: 'Error submitting order and sending email', error });
+    }
+};
+ 

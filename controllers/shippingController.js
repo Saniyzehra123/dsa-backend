@@ -27,10 +27,10 @@ const getShipping = async (req, res) => {
   
   try {
     const orderId = req.params.id;
-    console.log('req', orderId)
+    // console.log('req', orderId)
     const query =`SELECT * FROM shipping WHERE order_id = ?`;
     db.query(query, [orderId], (err, results) => {
-      console.log('res', results, err)
+      // console.log('res', results, err)
         if(err) {
           return (new ApiError(500, `Internal server error: ${err.message}`));
         }
