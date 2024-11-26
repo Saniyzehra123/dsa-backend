@@ -17,16 +17,23 @@ const addressRoutes = require('./routes/addressRoutes');
 const contactRoutes = require('./routes/contactRoutes.js');
 const paymentRoutes =require('./routes/paymentRoute.js')
 const adminItem = require("./routes/adminItem.js");
- 
-
+const compression = require('compression')
 require('dotenv').config();
-
- 
-
 const app = express();
 const PORT = process.env.PORT || 5000;
+// var corsOptions = {
+//   origin: `${process.env.resetLink}`,
+//   optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
+// }
 
-app.use(cors());
+const corsOptions = {
+  origin: `${process.env.resetLink}`,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+};
+app.use(compression());
+app.use(cors(corsOptions));
 
 app.use(bodyParser.json());  
 app.use(cookieParser());
